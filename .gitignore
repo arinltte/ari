@@ -1,17 +1,22 @@
 # macOS
 .DS_Store
+.AppleDouble
+.LSOverride
 
-# Xcode user files
+# Xcode user state
 xcuserdata/
 *.xcuserstate
+*.xccheckout
+*.moved-aside
+
+# Derived data and build output
+DerivedData/
+build/
 
 # Swift Package Manager
 .build/
 Packages/
 Package.resolved
 
-# Xcode project files (user-specific)
-*.xcworkspace/xcuserdata/
-
-# Derived data
-DerivedData/
+# Internal notes
+ari/markdownlatex.md
