@@ -36,7 +36,8 @@ struct SpotlightView: View {
     }
 
     private var calculatedHeight: CGFloat {
-        if client.setupState != .ready { return 150 }
+        if case .pythonTooOld = client.setupState { return 280 }
+        else if client.setupState != .ready { return 150 }
         else if showSettings {
             if showAbout { return 360 }
             return client.isDownloadingModel ? 400 : 380
@@ -218,16 +219,71 @@ struct SpotlightView: View {
     
     private var setupOverlay: some View {
         VStack(spacing: 12) {
-            if client.setupState == .installing || client.setupState == .checking {
+            switch client.setupState {
+            case .pythonTooOld(let version):
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                    .font(.system(size: 24))
+                Text("Python Update Required")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(version == "not found"
+                     ? "Python was not found on your system."
+                     : "Python \(version) is installed, but ari requires Python 3.10 or later.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+                Text("Please install Python 3.10 or later, then relaunch ari.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+                VStack(spacing: 6) {
+                    Button("Download Python (python.org)") {
+                        NSWorkspace.shared.open(URL(string: "https://www.python.org/downloads/")!)
+                    }
+                    .controlSize(.small)
+                    Text("or via Homebrew: brew install python@3.12")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .textSelection(.enabled)
+                }
+                Button("Exit") { NSApplication.shared.terminate(nil) }
+                    .controlSize(.small)
+                    .foregroundColor(.red)
+
+            case .installing, .checking:
                 ProgressView().scaleEffect(0.8)
-                Text(client.setupState == .checking ? "Checking Environment..." : "Initial Setup in Progress").font(.system(size: 13, weight: .semibold))
-            } else if client.setupState == .error {
-                Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.red).font(.system(size: 24))
-                Text("Setup Failed").font(.system(size: 13, weight: .semibold))
+                Text(client.setupState == .checking ? "Checking Environment..." : "Initial Setup in Progress")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(client.setupProgressText)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .padding(.horizontal, 16)
+
+            case .error:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.red)
+                    .font(.system(size: 24))
+                Text("Setup Failed")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(client.setupProgressText)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .padding(.horizontal, 16)
+                Button("Exit") { NSApplication.shared.terminate(nil) }
+                    .controlSize(.small)
+
+            case .ready:
+                EmptyView()
             }
-            Text(client.setupProgressText).font(.system(size: 11, design: .monospaced)).foregroundColor(.secondary).multilineTextAlignment(.center).lineLimit(3).padding(.horizontal, 16)
-            if client.setupState == .error { Button("Exit") { NSApplication.shared.terminate(nil) }.controlSize(.small) }
-        }.frame(maxWidth: .infinity, maxHeight: .infinity).padding()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding()
     }
     
     private var aboutContent: some View {

@@ -73,6 +73,7 @@ struct MLXChunk: Codable {
 enum SetupState: Equatable {
     case checking
     case installing
+    case pythonTooOld(String)
     case error
     case ready
 }
@@ -186,48 +187,118 @@ class MLXClient: ObservableObject {
     }
 
     private func checkAndSetupEnvironment() {
-        runSetupScript()
+        Task.detached {
+            print("[Ari Setup] Checking Python version...")
+
+            // Find whatever python3 the system provides
+            let checkTask = Process()
+            checkTask.executableURL = URL(fileURLWithPath: "/bin/bash")
+            checkTask.arguments = ["-c", """
+                export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:$PATH"
+                for candidate in python3.13 python3.12 python3.11 python3.10 python3; do
+                    full_path=$(command -v "$candidate" 2>/dev/null || true)
+                    if [ -n "$full_path" ]; then
+                        version=$("$full_path" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>/dev/null || true)
+                        if [ -n "$version" ]; then
+                            echo "$full_path|$version"
+                            break
+                        fi
+                    fi
+                done
+            """]
+            let pipe = Pipe()
+            checkTask.standardOutput = pipe
+            checkTask.standardError = FileHandle.nullDevice
+            try? checkTask.run()
+            checkTask.waitUntilExit()
+
+            let output = (String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            print("[Ari Setup] Python probe output: '\(output)'")
+
+            // Parse "path|major.minor.micro"
+            let parts = output.components(separatedBy: "|")
+            if parts.count == 2 {
+                let versionString = parts[1]
+                let components = versionString.components(separatedBy: ".").compactMap { Int($0) }
+                let major = components.count > 0 ? components[0] : 0
+                let minor = components.count > 1 ? components[1] : 0
+
+                if major < 3 || (major == 3 && minor < 10) {
+                    print("[Ari Setup] Python \(versionString) is too old (need 3.10+). Blocking setup.")
+                    Task { @MainActor in
+                        self.setupState = .pythonTooOld(versionString)
+                    }
+                    return
+                }
+                print("[Ari Setup] Python \(versionString) OK. Proceeding with setup.")
+            } else {
+                // No python found at all — also block
+                print("[Ari Setup] No Python found. Blocking setup.")
+                Task { @MainActor in
+                    self.setupState = .pythonTooOld("not found")
+                }
+                return
+            }
+
+            Task { @MainActor in self.runSetupScript() }
+        }
     }
-        
-        private func runSetupScript() {
-            self.setupState = .installing
-            self.setupProgressText = "Initializing Python Environment in ~/.ari/Python..."
 
-            Task.detached {
-                let task = Process()
-                task.executableURL = URL(fileURLWithPath: "/bin/bash")
-                
-                // ── NEW: Added torch and torchvision to the pip install list ──
-                let script = """
-                export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-                if ! command -v python3 &> /dev/null; then echo "ERROR: python3 not found. Please install Xcode Command Line Tools or Homebrew."; exit 1; fi
-                python3 -m venv "\(self.pythonDirectory.path)"
-                source "\(self.pythonDirectory.path)/bin/activate"
-                pip install -U pip mlx-lm mlx-vlm huggingface_hub[cli] hf_transfer torch torchvision
-                if command -v brew &> /dev/null; then brew install huggingface-cli || true; fi
-                """
-                task.arguments = ["-c", script]
+    private func runSetupScript() {
+        self.setupState = .installing
+        self.setupProgressText = "Initializing Python Environment in ~/.ari/Python..."
 
-                let pipe = Pipe()
-                task.standardOutput = pipe; task.standardError = pipe
-                pipe.fileHandleForReading.readabilityHandler = { handle in
-                    let data = handle.availableData
-                    if data.count > 0, let str = String(data: data, encoding: .utf8), let last = str.components(separatedBy: .newlines).filter({ !$0.isEmpty }).last {
-                        Task { @MainActor in self.setupProgressText = last }
+        Task.detached {
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: "/bin/bash")
+
+            let script = """
+            export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+            if ! command -v python3 &> /dev/null; then echo "ERROR: python3 not found."; exit 1; fi
+            python3 -m venv "\(self.pythonDirectory.path)"
+            source "\(self.pythonDirectory.path)/bin/activate"
+            pip install -U pip
+            WHEELS_DIR="$(dirname "$(dirname "$(which python3)")")/../../Resources/ari_wheels"
+            if [ -d "$WHEELS_DIR" ]; then
+                echo "Using bundled wheels..."
+                pip install --find-links "$WHEELS_DIR" --prefer-binary \
+                    mlx-lm mlx-vlm "huggingface_hub[cli]" hf_transfer torch torchvision
+            else
+                pip install -U mlx-lm mlx-vlm "huggingface_hub[cli]" hf_transfer torch torchvision
+            fi
+            if command -v brew &>/dev/null; then brew install huggingface-cli 2>/dev/null || true; fi
+            """
+            task.arguments = ["-c", script]
+
+            let pipe = Pipe()
+            task.standardOutput = pipe; task.standardError = pipe
+            pipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if data.count > 0, let str = String(data: data, encoding: .utf8) {
+                    for line in str.components(separatedBy: .newlines) {
+                        let trimmed = line.trimmingCharacters(in: .whitespaces)
+                        guard !trimmed.isEmpty else { continue }
+                        print("[Ari Setup] \(trimmed)")
+                        Task { @MainActor in self.setupProgressText = trimmed }
                     }
                 }
+            }
 
-                do {
-                    try task.run()
-                    task.waitUntilExit()
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    Task { @MainActor in
-                        if task.terminationStatus == 0 { self.setupState = .ready; self.fetchAvailableModels() }
-                        else { self.setupState = .error; self.setupProgressText = "Installation failed (Code \(task.terminationStatus))." }
-                    }
-                } catch { Task { @MainActor in self.setupState = .error; self.setupProgressText = error.localizedDescription } }
+            do {
+                try task.run()
+                task.waitUntilExit()
+                pipe.fileHandleForReading.readabilityHandler = nil
+                Task { @MainActor in
+                    if task.terminationStatus == 0 { self.setupState = .ready; self.fetchAvailableModels() }
+                    else { self.setupState = .error; self.setupProgressText = "Installation failed (Code \(task.terminationStatus))." }
+                }
+            } catch {
+                Task { @MainActor in self.setupState = .error; self.setupProgressText = error.localizedDescription }
             }
         }
+    }
 
     @MainActor
     func validateRepo(id: String) async {
