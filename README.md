@@ -91,8 +91,8 @@ ari works with any MLX-compatible model. For the best performance on Apple Silic
 
 | Model | Size | Use Case |
 | --- | --- | --- |
-| `mlx-community/Qwen3.5-2B-MLX-4bit` | ~1.5 GB | Fast, everyday queries |
-| `mlx-community/gemma-4-e4b-it-4bit` | ~4 GB | Balanced quality and speed |
+| `mlx-community/Qwen3.5-2B-MLX-4bit` | ~1.75 GB | Fast, everyday queries |
+| `mlx-community/gemma-4-e4b-it-4bit` | ~5.25 GB | Balanced quality and speed |
 
 > Browse the full catalogue at [huggingface.co/mlx-community/models](https://huggingface.co/mlx-community/models).
 
