@@ -15,6 +15,11 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		940188422FC581B300B63C30 /* ari_wheels */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ari_wheels;
+			sourceTree = "<group>";
+		};
 		94334A842FC05CCC0031991E /* ari */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ari;
@@ -37,6 +42,7 @@
 		94334A792FC05CCC0031991E = {
 			isa = PBXGroup;
 			children = (
+				940188422FC581B300B63C30 /* ari_wheels */,
 				94334A842FC05CCC0031991E /* ari */,
 				94334A832FC05CCC0031991E /* Products */,
 			);
@@ -66,6 +72,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				940188422FC581B300B63C30 /* ari_wheels */,
 				94334A842FC05CCC0031991E /* ari */,
 			);
 			name = ari;
@@ -270,8 +277,8 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 0.1.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = arinltte.ari;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -302,8 +309,8 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 0.1.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = arinltte.ari;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
