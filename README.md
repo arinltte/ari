@@ -15,6 +15,8 @@
 
 ari is a lightweight, open-source AI launcher for macOS that lives entirely in the menu bar. It runs local language models on-device using MLX, giving you instant AI access from anywhere on your Mac — no browser, no cloud, no background services you didn't ask for.
 
+<video src="https://github.com/user-attachments/assets/8fe6b7fd-83ed-4395-b5e4-8bf11acd0ff2" controls width="800"></video>
+
 > [!TIP]
 > ari itself uses **under 50 MB of memory**.
 
