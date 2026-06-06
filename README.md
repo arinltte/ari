@@ -2,7 +2,7 @@
   <img src="public/logo.jpg" alt="ari Logo" width="64" />
   <br />
   <h1 align="center">ari</h1>
-  <p align="center">The Quiet AI on Your Mac</p>
+  <p align="center">Quiet AI on Your Mac.</p>
   <p align="center">
     <a href="https://github.com/arinltte/ari/releases/latest"><img src="https://img.shields.io/github/v/release/arinltte/ari?style=flat-square&color=blue" alt="Latest Release" /></a>
     <a href="https://github.com/arinltte/ari/blob/main/LICENSE"><img src="https://img.shields.io/github/license/arinltte/ari?style=flat-square&color=green" alt="License" /></a>
